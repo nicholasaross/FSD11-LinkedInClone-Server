@@ -4,12 +4,6 @@ import { TASKS } from "../data/tasks.js";
 // never reuse an id after deletes (TASKS.length + 1 could collide).
 let nextId = TASKS.reduce((max, t) => Math.max(max, t.id), 0) + 1;
 
-const defaultRoute = (req, res) => {
-  res.json({ message: "Welcome to the Task Manager API",
-    timestamp: new Date().toLocaleString()
-   });
-}
-
 const getTasks = (req, res) => { 
   res.json({
 	status: "success",
@@ -99,4 +93,4 @@ const deleteTask = (req, res) => {
   });
 }
 
-export { defaultRoute, getTasks, getTask, createTask, updateTask, deleteTask }
+export { getTasks, getTask, createTask, updateTask, deleteTask }

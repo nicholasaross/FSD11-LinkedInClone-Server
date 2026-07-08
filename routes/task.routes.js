@@ -1,11 +1,9 @@
 import { Router } from "express";
-import { defaultRoute, getTasks, getTask, createTask, updateTask, deleteTask } from "../controllers/task.controller.js";
+import { getTasks, getTask, createTask, updateTask, deleteTask } from "../controllers/task.controller.js";
 import validateTask from "../middleware/validateTask.middleware.js";
 
-const router = Router();
 
-// GET / - Default route
-router.get("/", (req, res) => defaultRoute(req, res));
+const router = Router();
 
 // GET /tasks - Get all tasks
 router.get("/tasks", (req, res) => getTasks(req, res));
