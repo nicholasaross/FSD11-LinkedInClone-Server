@@ -1,25 +1,30 @@
 import { TASKS } from "../data/tasks.js";
+import curriculum from "../data/curriculum.js";
+import { randomUUID } from "crypto";
 
 const defaultRoute = (req, res) => {
-  res.json({ message: "Welcome to the Multi-User Task Manager API",
-    timestamp: new Date().toLocaleString()
-   });
-}
+  res.json({
+    message: "Welcome to the Multi-User Task Manager API",
+    timestamp: new Date().toLocaleString(),
+  });
+};
 
 const initialise = (req, res) => {
   // Clear existing tasks
   TASKS.length = 0;
 
   // Add initial tasks
-  TASKS.push(
-	{ id: 1, title: "Task 1", description: "Description for Task 1", completed: false },
-	{ id: 2, title: "Task 2", description: "Description for Task 2", completed: true },
-	{ id: 3, title: "Task 3", description: "Description for Task 3", completed: false }
-  );
+  for (let user = 1; user <= 3; user++) {
+    const userId = randomUUID();
+
+    TASKS.push(curriculum.getTasks(userId, 5));
+  }
 
   res.json({
-	status: "success",
-	timestamp: new Date().toLocaleString(),
-	data: TASKS
+    status: "success",
+    timestamp: new Date().toLocaleString(),
+    data: TASKS,
   });
-}
+};
+
+export { defaultRoute, initialise };
