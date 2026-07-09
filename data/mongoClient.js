@@ -1,10 +1,8 @@
-import { env } from "dotenv";
-env.config();
+import "dotenv/config";
+import { MongoClient, ServerApiVersion } from "mongodb";
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
 const uri = `mongodb+srv://nicholasross_db_user:${process.env.DB_PASSWORD}@cluster0.ed0xajm.mongodb.net/?appName=Cluster0`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -13,18 +11,58 @@ const client = new MongoClient(uri, {
   },
 });
 
-async function run() {
-  try {
-    // Connect the client to the server	(optional starting in v4.7)
+let tasksCollection;
+
+async function getTasksCollection() {
+  if (!tasksCollection) {
     await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!",
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
+    tasksCollection = client.db("taskmanager").collection("tasks");
   }
+  return tasksCollection;
 }
-run().catch(console.dir);
+
+const mongoGetTasks = async (req, res) => {
+  const collection = await getTasksCollection();
+  return collection.find({ userId: req.user.id }).toArray();
+};
+
+const mongoGetTaskById = async (req, res, id) => {
+  const collection = await getTasksCollection();
+  return collection.findOne({ id, userId: req.user.id });
+};
+
+const mongoCreateTask = async (task) => {
+  const collection = await getTasksCollection();
+  await collection.insertOne(task);
+  return task;
+};
+
+const mongoCreateTasks = async (tasks) => {
+  const collection = await getTasksCollection();
+  await collection.insertMany(tasks);
+  return tasks;
+};
+
+const mongoUpdateTask = async (req, res, id, updates) => {
+  const collection = await getTasksCollection();
+  return collection.findOneAndUpdate(
+    { id, userId: req.user.id },
+    { $set: updates },
+    { returnDocument: "after" },
+  );
+};
+
+const mongoDeleteTask = async (req, res, id) => {
+  const collection = await getTasksCollection();
+  const result = await collection.deleteOne({ id, userId: req.user.id });
+  return result.deletedCount > 0;
+};
+
+export {
+  mongoGetTasks,
+  mongoGetTaskById,
+  mongoCreateTask,
+  mongoCreateTasks,
+  mongoUpdateTask,
+  mongoDeleteTask,
+};

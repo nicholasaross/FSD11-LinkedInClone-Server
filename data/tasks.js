@@ -1,3 +1,0 @@
-const TASKS = [];
-
-export { TASKS };

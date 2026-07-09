@@ -1,23 +1,33 @@
 import { randomUUID } from "node:crypto";
+import {
+  mongoGetTasks,
+  mongoGetTaskById,
+  mongoCreateTask,
+  mongoUpdateTask,
+  mongoDeleteTask,
+} from "../data/mongoClient.js";
 
-import { TASKS } from "../data/tasks.js";
-
-const getTasks = (req, res) => {
-  res.json({
-    status: "success",
-    timestamp: new Date().toLocaleString(),
-    data: TASKS,
-  });
-  res.on("finish", () => {
-    console.log(
-      `Response sent at: ${new Date().toLocaleString()}; response status: ${res.statusCode}`,
-    );
-  });
+const getTasks = async (req, res) => {
+  try {
+    const tasks = await mongoGetTasks(req, res);
+    res.json({
+      status: "success",
+      timestamp: new Date().toLocaleString(),
+      data: tasks,
+    });
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({
+      status: "error",
+      timestamp: new Date().toLocaleString(),
+      message: "Failed to fetch tasks",
+    });
+  }
 };
 
-const getTask = (req, res) => {
+const getTask = async (req, res) => {
   const taskId = req.params.id;
-  const task = TASKS.find((t) => String(t.id) === taskId);
+  const task = await mongoGetTaskById(req, res, taskId);
 
   if (!task) {
     return res.status(404).json({
@@ -34,7 +44,7 @@ const getTask = (req, res) => {
   });
 };
 
-const createTask = (req, res) => {
+const createTask = async (req, res) => {
   const { title, description } = req.body;
 
   const newTask = {
@@ -42,8 +52,10 @@ const createTask = (req, res) => {
     title,
     description,
     completed: false,
+    userId: req.user.id,
   };
-  TASKS.push(newTask);
+
+  await mongoCreateTask(newTask);
   res.status(201).json({
     status: "success",
     timestamp: new Date().toLocaleString(),
@@ -51,41 +63,44 @@ const createTask = (req, res) => {
   });
 };
 
-const updateTask = (req, res) => {
+const updateTask = async (req, res) => {
   const taskId = req.params.id;
-  const task = TASKS.find((t) => String(t.id) === taskId);
+  const { title, description, completed } = req.body;
 
-  if (!task) {
+  const updates = {};
+  if (title !== undefined) updates.title = title;
+  if (description !== undefined) updates.description = description;
+  if (completed !== undefined) updates.completed = completed;
+
+  const updatedTask = await mongoUpdateTask(req, res, taskId, updates);
+
+  if (!updatedTask) {
     return res.status(404).json({
       status: "error",
       timestamp: new Date().toLocaleString(),
       message: "Task not found",
     });
   }
-
-  const { title, description, completed } = req.body;
-  if (title !== undefined) task.title = title;
-  if (description !== undefined) task.description = description;
-  if (completed !== undefined) task.completed = completed;
 
   res.json({
     status: "success",
     timestamp: new Date().toLocaleString(),
-    data: task,
+    data: updatedTask,
   });
 };
 
-const deleteTask = (req, res) => {
+const deleteTask = async (req, res) => {
   const taskId = req.params.id;
-  const taskIndex = TASKS.findIndex((t) => String(t.id) === taskId);
-  if (taskIndex === -1) {
+  const deleted = await mongoDeleteTask(req, res, taskId);
+
+  if (!deleted) {
     return res.status(404).json({
       status: "error",
       timestamp: new Date().toLocaleString(),
       message: "Task not found",
     });
   }
-  TASKS.splice(taskIndex, 1);
+
   res.json({
     status: "success",
     timestamp: new Date().toLocaleString(),
