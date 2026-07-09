@@ -1,12 +1,16 @@
 import { Router } from "express";
 import { defaultRoute, initialise } from "../controllers/admin.controller.js";
+import authenticate from "../middleware/auth.middleware.js";
+import requireAdmin from "../middleware/requireAdmin.middleware.js";
 
 const router = Router();
 
 // GET / - Default route
 router.get("/", (req, res) => defaultRoute(req, res));
 
-// GET /tasks - Get all tasks
-router.get("/init", (req, res) => initialise(req, res));
+// GET /init - Initialise the application (authenticated and is_admin only)
+router.get("/init", authenticate, requireAdmin, (req, res) =>
+  initialise(req, res),
+);
 
 export default router;

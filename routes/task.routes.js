@@ -1,14 +1,21 @@
 import { Router } from "express";
-import { getTasks, getTask, createTask, updateTask, deleteTask } from "../controllers/task.controller.js";
+import {
+  getTasks,
+  getTask,
+  createTask,
+  updateTask,
+  deleteTask,
+} from "../controllers/task.controller.js";
 import validateTask from "../middleware/validateTask.middleware.js";
-
+import authenticate from "../middleware/auth.middleware.js";
 
 const router = Router();
+router.use(authenticate); //	apply to all routes in this router
 
 // GET /tasks - Get all tasks
 router.get("/tasks", (req, res) => getTasks(req, res));
 
-//  GET /tasks/:id - Get a specific task by ID
+// GET /tasks/:id - Get a specific task by ID
 router.get("/tasks/:id", (req, res) => getTask(req, res));
 
 // POST /tasks - Create a new task
