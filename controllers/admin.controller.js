@@ -1,6 +1,6 @@
 import { TASKS } from "../data/tasks.js";
+import { USERS } from "../data/users.js";
 import curriculum from "../data/curriculum.js";
-import { randomUUID } from "crypto";
 
 const defaultRoute = (req, res) => {
   res.json({
@@ -14,10 +14,12 @@ const initialise = (req, res) => {
   TASKS.length = 0;
 
   // Add initial tasks
-  for (let user = 1; user <= 3; user++) {
-    const userId = randomUUID();
+  for (const user of USERS) {
+    if (!user.is_admin) {
+      const userId = user.id;
 
-    TASKS.push(curriculum.getTasks(userId, 5));
+      TASKS.push(curriculum.getTasks(userId, 5));
+    }
   }
 
   res.json({
