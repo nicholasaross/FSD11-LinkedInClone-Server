@@ -58,6 +58,12 @@ const mongoDeleteTask = async (req, res, id) => {
   return result.deletedCount > 0;
 };
 
+const mongoDeleteAllTasks = async () => {
+  const collection = await getTasksCollection();
+  const result = await collection.deleteMany({});
+  return result.deletedCount;
+};
+
 export {
   mongoGetTasks,
   mongoGetTaskById,
@@ -65,4 +71,5 @@ export {
   mongoCreateTasks,
   mongoUpdateTask,
   mongoDeleteTask,
+  mongoDeleteAllTasks,
 };

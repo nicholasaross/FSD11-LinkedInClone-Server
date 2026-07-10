@@ -1,6 +1,6 @@
 import { USERS } from "../data/users.js";
 import curriculum from "../data/curriculum.js";
-import { mongoCreateTasks } from "../data/mongoClient.js";
+import { mongoDeleteAllTasks, mongoCreateTasks } from "../data/mongoClient.js";
 
 const defaultRoute = (req, res) => {
   // #swagger.summary = 'Basic service health check endpoint'
@@ -32,6 +32,7 @@ const restoreDB = async (req, res) => {
   }
 
   try {
+    await mongoDeleteAllTasks();
     await mongoCreateTasks(tasks);
   } catch (error) {
     console.error("Error creating tasks:", error);
