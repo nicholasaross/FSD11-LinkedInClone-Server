@@ -1,0 +1,184 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Multi-User Task Manager API",
+    "version": "1.0.0",
+    "description": "Endpoints require a Bearer token. Admin-only endpoints return 403 for non-admin tokens."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3322"
+    }
+  ],
+  "paths": {
+    "/tasks": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "description": "",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "example": "any"
+                  },
+                  "description": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{id}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "example": "any"
+                  },
+                  "description": {
+                    "example": "any"
+                  },
+                  "completed": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Basic service health check endpoint",
+        "description": "Only unauthenticated endpoint (other than api-docs). Returns a welcome message and timestamp.",
+        "responses": {
+          "200": {
+            "description": "Service is running and accessible"
+          }
+        },
+        "security": []
+      }
+    },
+    "/restore": {
+      "get": {
+        "summary": "Admin-only creation of tasks for all non-admin users",
+        "description": "Requires a Bearer token belonging to an administrator.",
+        "responses": {
+          "200": {
+            "description": "Successfully restored database with tasks for all non-admin users"
+          },
+          "401": {
+            "description": "Invalid or missing API token"
+          },
+          "403": {
+            "description": "Admin privileges required"
+          },
+          "500": {
+            "description": "Failed to restore database"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

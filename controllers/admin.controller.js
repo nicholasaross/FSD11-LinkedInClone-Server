@@ -3,13 +3,25 @@ import curriculum from "../data/curriculum.js";
 import { mongoCreateTasks } from "../data/mongoClient.js";
 
 const defaultRoute = (req, res) => {
+  // #swagger.summary = 'Basic service health check endpoint'
+  // #swagger.description = 'Only unauthenticated endpoint (other than api-docs). Returns a welcome message and timestamp.'
+  // #swagger.responses[200] = { description: 'Service is running and accessible' }
+  // #swagger.security = []
+
   res.json({
     message: "Welcome to the Multi-User Task Manager API",
     timestamp: new Date().toLocaleString(),
   });
 };
 
-const initialise = async (req, res) => {
+const restoreDB = async (req, res) => {
+  // #swagger.summary = 'Admin-only creation of tasks for all non-admin users'
+  // #swagger.description = 'Requires a Bearer token belonging to an administrator.'
+  // #swagger.responses[200] = { description: 'Successfully restored database with tasks for all non-admin users' }
+  // #swagger.responses[401] = { description: 'Invalid or missing API token' }
+  // #swagger.responses[403] = { description: 'Admin privileges required' }
+  // #swagger.responses[500] = { description: 'Failed to restore database' }
+
   const tasks = [];
 
   for (const user of USERS) {
@@ -26,7 +38,7 @@ const initialise = async (req, res) => {
     return res.status(500).json({
       status: "error",
       timestamp: new Date().toLocaleString(),
-      message: "Failed to create tasks",
+      message: "Failed to restore database",
     });
   }
 
@@ -37,4 +49,4 @@ const initialise = async (req, res) => {
   });
 };
 
-export { defaultRoute, initialise };
+export { defaultRoute, restoreDB };
