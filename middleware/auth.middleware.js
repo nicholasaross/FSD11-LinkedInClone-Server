@@ -1,20 +1,40 @@
-import { USERS } from "../data/users.js";
+import jwt from "jsonwebtoken";
+import User from "../models/user.model.js";
 
-const authenticate = (req, res, next) => {
+// Verifies the Bearer JWT, loads the user from the database, and attaches
+// the Mongoose user document to req.user for downstream handlers/middleware.
+const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-  const user = token && USERS.find((u) => u.api_token === token);
-  if (!user) {
+  if (!token) {
     return res.status(401).json({
       status: "error",
       timestamp: new Date().toLocaleString(),
-      message: "Invalid or missing API token",
+      message: "Access denied. No token provided.",
     });
   }
 
-  req.user = user;
-  next();
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({
+        status: "error",
+        timestamp: new Date().toLocaleString(),
+        message: "Invalid token.",
+      });
+    }
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      status: "error",
+      timestamp: new Date().toLocaleString(),
+      message: "Invalid token.",
+    });
+  }
 };
 
 export default authenticate;
+export { authenticate, authenticate as isAuthenticated };

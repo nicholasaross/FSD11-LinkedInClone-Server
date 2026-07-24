@@ -1,13 +1,15 @@
 {
   "type": "module",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongodb": "^7.5.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.8.0",
     "nodemon": "^3.1.14",
     "swagger-ui-express": "^5.0.1"
   },
-  "name": "project-taskmanager",
+  "name": "project-socialmedia",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

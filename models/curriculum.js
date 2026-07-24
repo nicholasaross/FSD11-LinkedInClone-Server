@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CURRICULUM_PATH = path.join(
@@ -37,60 +36,52 @@ class FSDCurriculum {
     return this.#curriculum;
   }
 
-  getTasks(userId, taskCount = 1) {
+  getPosts(author, postCount = 1) {
     if (this.#curriculum === null) {
       throw new Error("Curriculum not loaded. Call load() first.");
     }
 
-    const tasks = [];
+    const posts = [];
 
     const practicalPrefixes = [
-      "Prepare for",
-      "Read notes on",
-      "Watch recording of",
-      "Write code for",
-      "Write tests for",
-      "Review",
-      "Submit",
+      "Busy preparing for",
+      "I am reading notes on",
+      "About to watch recording of",
+      "Writing code for",
+      "Writing tests for",
+      "Reviewing",
+      "Just submitted my solution for",
     ];
 
     const lecturePrefixes = [
-      "Prepare for",
-      "Read notes on",
-      "Watch recording of",
-      "Revise",
-      "Do exercises for",
-      "Find online resources for",
-      "Write example code for",
+      "Busy preparing for",
+      "I am reading notes on",
+      "About to watch recording of",
+      "Revising",
+      "Doing exercises for",
+      "Found cool online resource for",
+      "Writing example code for",
     ];
 
-    for (let i = 0; i < taskCount; i++) {
-      const id = randomUUID();
-
+    for (let i = 0; i < postCount; i++) {
       const randomSession =
         this.#curriculum[Math.floor(Math.random() * this.#curriculum.length)];
-      const description = randomSession.header;
+      const header = randomSession.header;
 
-      let title = "";
+      let sentence = "";
       if (randomSession.is_practical) {
-        title = `${practicalPrefixes[Math.floor(Math.random() * practicalPrefixes.length)]} ${randomSession.lecture} practical`;
+        sentence = `${practicalPrefixes[Math.floor(Math.random() * practicalPrefixes.length)]} ${randomSession.lecture} practical`;
       } else {
-        title = `${lecturePrefixes[Math.floor(Math.random() * lecturePrefixes.length)]} ${randomSession.lecture[Math.floor(Math.random() * randomSession.lecture.length)]}`;
+        sentence = `${lecturePrefixes[Math.floor(Math.random() * lecturePrefixes.length)]} ${randomSession.lecture[Math.floor(Math.random() * randomSession.lecture.length)]}`;
       }
 
-      const currentDate = Date.now();
-      const completed = currentDate > randomSession.date;
-
-      tasks.push({
-        id,
-        userId,
-        title,
-        description,
-        completed,
+      posts.push({
+        author,
+        content: `${sentence} — ${header}`,
       });
     }
 
-    return tasks;
+    return posts;
   }
 }
 

@@ -8,7 +8,7 @@ const router = Router();
 // GET / - Default route
 router.get("/", (req, res) => defaultRoute(req, res));
 
-// GET /restore - Restore the database (authenticated and is_admin only)
+// GET /restore - Restore the database (authenticated and isAdmin only)
 router.get("/restore", authenticate, requireAdmin, (req, res) =>
   restoreDB(req, res),
 );
