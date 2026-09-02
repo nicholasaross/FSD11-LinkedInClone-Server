@@ -20,8 +20,7 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       maxlength: 100,
       required: true,
-      // Never returned by a query unless explicitly asked for with
-      // .select("+password") — see login() in user.controller.js.
+      // never returned unless explicitly asked for with .select("+password")
       select: false,
     },
     biography: {

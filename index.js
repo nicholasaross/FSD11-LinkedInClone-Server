@@ -1,6 +1,8 @@
 import "dotenv/config";
 import express from "express";
+import cors from "cors";
 import mongoose from "mongoose";
+import { fail, failFromError } from "./utils/response.utils.js";
 import loggerMiddleware from "./middleware/logger.middleware.js";
 import { createRequire } from "module";
 import swaggerUi from "swagger-ui-express";
@@ -18,10 +20,14 @@ const mongoUri = `mongodb+srv://nicholasross_db_user:${process.env.DB_PASSWORD}@
 
 const app = express();
 app.disable("x-powered-by");
+
+// CORS must come before everything else
+app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve Swagger UI at /api-docs BEFORE the routes to ensure it is accessible without authentication
+// serve Swagger UI at /api-docs BEFORE the routes to ensure it is accessible without authentication
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 app.use(loggerMiddleware);
 app.use("/", adminRoutes);
@@ -29,7 +35,18 @@ app.use("/posts", postRoutes);
 app.use("/users", userRoutes);
 app.use("/dashboard", dashboardRoutes);
 
-// Connect to MongoDB once, then start the server.
+app.use((req, res) =>
+  fail(res, 404, `Cannot ${req.method} ${req.originalUrl}`),
+);
+
+app.use((error, req, res, next) => {
+  console.error("Unhandled error:", error);
+  if (res.headersSent) {
+    return next(error);
+  }
+  failFromError(res, error, 500, "Internal server error");
+});
+
 mongoose
   .connect(mongoUri)
   .then(() => {

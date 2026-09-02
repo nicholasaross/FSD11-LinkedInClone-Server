@@ -9,6 +9,11 @@ const postSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    imageUrl: {
+      type: String,
+      trim: true,
+      match: [/^https?:\/\/\S+$/i, "imageUrl must be an http(s) URL"],
+    },
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

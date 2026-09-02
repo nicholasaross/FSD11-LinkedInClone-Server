@@ -5,6 +5,8 @@ import {
   createPost,
   updatePost,
   deletePost,
+  likePost,
+  unlikePost,
 } from "../controllers/post.controller.js";
 import commentRoutes from "./comment.routes.js";
 import validatePost from "../middleware/validatePost.middleware.js";
@@ -16,15 +18,17 @@ import { fail } from "../utils/response.utils.js";
 const router = Router();
 router.use(authenticate); //	apply to all routes in this router
 
-router.param("postId", (req, res, next, id) =>
+// both names guard the same thing: :id on the post routes, :postId on the
+// nested comment and like routes
+const guardPostId = (req, res, next, id) =>
   mongoose.Types.ObjectId.isValid(id)
     ? next()
-    : fail(res, 404, "Post not found"),
-);
+    : fail(res, 404, "Post not found");
 
-// Comments are a sub-resource of a post, so their router is nested here rather
-// than mounted separately in index.js. Everything it handles lives under
-// /posts/:postId/comments, and it inherits the authenticate above.
+router.param("id", guardPostId);
+router.param("postId", guardPostId);
+
+// comments are a sub-resource, nested here so they inherit the authenticate above
 router.use("/:postId/comments", commentRoutes);
 
 // GET /posts - Get all posts
@@ -41,5 +45,13 @@ router.patch("/:id", (req, res) => updatePost(req, res));
 
 // DELETE /posts/:id - Delete a specific post by ID
 router.delete("/:id", (req, res) => deletePost(req, res));
+
+// named :postId not :id so likes inherit the router.param guard above
+
+// POST /posts/:postId/likes - Like a post
+router.post("/:postId/likes", (req, res) => likePost(req, res));
+
+// DELETE /posts/:postId/likes - Remove your like from a post
+router.delete("/:postId/likes", (req, res) => unlikePost(req, res));
 
 export default router;

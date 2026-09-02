@@ -5,6 +5,8 @@ import {
   createComment,
   updateComment,
   deleteComment,
+  likeComment,
+  unlikeComment,
 } from "../controllers/comment.controller.js";
 import validateComment from "../middleware/validateComment.middleware.js";
 
@@ -20,8 +22,7 @@ router.param("commentId", (req, res, next, id) =>
     : fail(res, 404, "Comment not found"),
 );
 
-// Paths are relative to the parent's "/:postId/comments" mount, so "/" below is
-// really /posts/:postId/comments.
+// paths are relative to the parent's "/:postId/comments" mount
 
 // GET /posts/:postId/comments - Get all comments on a post
 router.get("/", (req, res) => getComments(req, res));
@@ -39,5 +40,11 @@ router.patch("/:commentId", validateComment, (req, res) =>
 
 // DELETE /posts/:postId/comments/:commentId - Delete a comment (author and Admin only)
 router.delete("/:commentId", (req, res) => deleteComment(req, res));
+
+// POST /posts/:postId/comments/:commentId/likes - Like a comment
+router.post("/:commentId/likes", (req, res) => likeComment(req, res));
+
+// DELETE /posts/:postId/comments/:commentId/likes - Remove your like from a comment
+router.delete("/:commentId/likes", (req, res) => unlikeComment(req, res));
 
 export default router;

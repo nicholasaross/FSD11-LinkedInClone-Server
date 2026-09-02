@@ -47,6 +47,15 @@
       "get": {
         "summary": "Get all posts (newest first), author populated",
         "description": "",
+        "parameters": [
+          {
+            "name": "author",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of posts"
@@ -64,7 +73,7 @@
             "description": "Post created"
           },
           "400": {
-            "description": "Content is required"
+            "description": "Content is required, or imageUrl is not an http(s) URL"
           }
         },
         "requestBody": {
@@ -80,6 +89,10 @@
                   "content": {
                     "type": "string",
                     "example": "Just shipped the Mongoose refactor!"
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "example": "https://example.com/screenshot.png"
                   }
                 }
               }
@@ -112,7 +125,7 @@
         }
       },
       "patch": {
-        "summary": "Update a post's content (author only)",
+        "summary": "Update a post's content or picture (author only)",
         "description": "",
         "parameters": [
           {
@@ -128,6 +141,9 @@
           "200": {
             "description": "Post updated"
           },
+          "400": {
+            "description": "imageUrl is not an http(s) URL"
+          },
           "404": {
             "description": "Post not found or not owned by user"
           }
@@ -138,13 +154,15 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "content"
-                ],
                 "properties": {
                   "content": {
                     "type": "string",
                     "example": "Edited: shipped the refactor and the Swagger docs."
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "example": "https://example.com/screenshot.png",
+                    "description": "Send null or an empty string to remove the picture."
                   }
                 }
               }
@@ -171,6 +189,58 @@
           },
           "404": {
             "description": "Post not found or not owned by user"
+          }
+        }
+      }
+    },
+    "/posts/{postId}/likes": {
+      "post": {
+        "summary": "Like a post as the authenticated user (idempotent)",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Post liked; returns the updated post"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "Post not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove the authenticated user\\'s like from a post (idempotent)",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Like removed; returns the updated post"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "Post not found"
           }
         }
       }
@@ -360,19 +430,87 @@
         }
       }
     },
+    "/posts/{postId}/comments/{commentId}/likes": {
+      "post": {
+        "summary": "Like a comment as the authenticated user (idempotent)",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment liked; returns the updated comment"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove the authenticated user\\'s like from a comment (idempotent)",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Like removed; returns the updated comment"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      }
+    },
     "/users/signup": {
       "post": {
-        "summary": "Register a new user",
+        "summary": "Register a new user and return a JWT",
         "description": "",
         "responses": {
           "201": {
-            "description": "User created"
+            "description": "User created; returns { token, user }"
           },
           "400": {
-            "description": "Missing required fields"
+            "description": "Missing required fields or invalid values"
           },
-          "500": {
-            "description": "Internal Server Error"
+          "409": {
+            "description": "Email already registered"
           }
         },
         "security": [],
@@ -417,19 +555,10 @@
         "description": "",
         "responses": {
           "200": {
-            "description": "Authenticated; returns { token }"
-          },
-          "400": {
-            "description": "Bad Request"
+            "description": "Authenticated; returns { token, user }"
           },
           "401": {
             "description": "Invalid credentials"
-          },
-          "404": {
-            "description": "User not found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "security": [],
@@ -464,11 +593,22 @@
         "summary": "List all users (passwords excluded)",
         "description": "",
         "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "summary": "Get the authenticated user from their token",
+        "description": "",
+        "responses": {
           "200": {
-            "description": "OK"
+            "description": "The current user"
           },
-          "500": {
-            "description": "Internal Server Error"
+          "401": {
+            "description": "Invalid or missing token"
           }
         }
       }
@@ -488,14 +628,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "404": {
             "description": "User not found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
@@ -521,9 +655,6 @@
           },
           "404": {
             "description": "User not found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -552,7 +683,7 @@
         }
       },
       "delete": {
-        "summary": "Delete a user",
+        "summary": "Delete a user, along with their posts, comments and likes",
         "description": "",
         "parameters": [
           {
@@ -573,9 +704,6 @@
           },
           "404": {
             "description": "User not found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -586,13 +714,10 @@
         "description": "",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "The current user"
           },
-          "404": {
-            "description": "User not found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "401": {
+            "description": "Invalid or missing token"
           }
         }
       }
@@ -603,13 +728,10 @@
         "description": "",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "The current admin user"
           },
           "403": {
             "description": "Access denied"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }

@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
-// Verifies the Bearer JWT, loads the user from the database, and attaches
-// the Mongoose user document to req.user for downstream handlers/middleware.
+// verifies the Bearer JWT, loads the user from the database, and attaches
+// the Mongoose user document to req.user for downstream handlers/middleware
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;

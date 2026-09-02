@@ -32,15 +32,19 @@ const restoreDB = async (req, res) => {
       posts.push(...curriculum.getPosts(user._id, 5));
     }
 
-    // Wipe comments as well as posts. deletePost() cascades, but this bulk
-    // deleteMany() bypasses that, so clearing posts alone would leave every
-    // comment orphaned against a post id that no longer exists.
+    // give roughly half the seeded posts a picsum.photos placeholder
+    for (const [i, post] of posts.entries()) {
+      if (Math.random() < 0.5) {
+        post.imageUrl = `https://picsum.photos/seed/fsd${i}-${Date.now()}/600/400`;
+      }
+    }
+
+    // wipe comments too: this bulk deleteMany bypasses the cascade in deletePost()
     await Comment.deleteMany({});
     await Post.deleteMany({});
     const createdPosts = await Post.insertMany(posts);
 
-    // Built from the CREATED posts, not from the input array: only the documents
-    // returned by insertMany() carry the _id that a comment needs to point at.
+    // built from the created posts, only those carry the _id a comment points at
     const comments = [];
     for (const post of createdPosts) {
       const commentCount = Math.floor(Math.random() * 4); // 0-3 per post
@@ -51,6 +55,20 @@ const restoreDB = async (req, res) => {
       }
     }
     const createdComments = await Comment.insertMany(comments);
+
+    // random likers per doc, one bulkWrite per collection rather than a save() each
+    const likeOps = (docs) =>
+      docs.map((doc) => ({
+        updateOne: {
+          filter: { _id: doc._id },
+          update: {
+            $set: { likes: users.filter(() => Math.random() < 0.4).map((u) => u._id) },
+          },
+        },
+      }));
+
+    if (createdPosts.length) await Post.bulkWrite(likeOps(createdPosts));
+    if (createdComments.length) await Comment.bulkWrite(likeOps(createdComments));
 
     res.json({
       status: "success",

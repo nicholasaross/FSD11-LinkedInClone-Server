@@ -1,6 +1,6 @@
-// Depends on the authentication middleware to set req.user.
-// Allows the request only when the authenticated user is acting on their own
-// account (req.params.id matches their id) or is an administrator.
+// depends on the authentication middleware to set req.user
+// allows the request only when the authenticated user is acting on their own
+// account (req.params.id matches their id) or is Admin
 const requireSelfOrAdmin = (req, res, next) => {
   const isSelf = req.user?._id?.toString() === req.params.id;
   if (isSelf || req.user?.isAdmin) {
