@@ -36,12 +36,22 @@ class FSDCurriculum {
     return this.#curriculum;
   }
 
+  // picks a random session from the curriculum and phrases it as a sentence
+  #randomSentence(practicalPrefixes, lecturePrefixes) {
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const session = pick(this.#curriculum);
+
+    const sentence = session.is_practical
+      ? `${pick(practicalPrefixes)} ${session.lecture} practical`
+      : `${pick(lecturePrefixes)} ${pick(session.lecture)}`;
+
+    return `${sentence} — ${session.header}`;
+  }
+
   getPosts(author, postCount = 1) {
     if (this.#curriculum === null) {
       throw new Error("Curriculum not loaded. Call load() first.");
     }
-
-    const posts = [];
 
     const practicalPrefixes = [
       "Busy preparing for",
@@ -63,25 +73,52 @@ class FSDCurriculum {
       "Writing example code for",
     ];
 
+    const posts = [];
     for (let i = 0; i < postCount; i++) {
-      const randomSession =
-        this.#curriculum[Math.floor(Math.random() * this.#curriculum.length)];
-      const header = randomSession.header;
-
-      let sentence = "";
-      if (randomSession.is_practical) {
-        sentence = `${practicalPrefixes[Math.floor(Math.random() * practicalPrefixes.length)]} ${randomSession.lecture} practical`;
-      } else {
-        sentence = `${lecturePrefixes[Math.floor(Math.random() * lecturePrefixes.length)]} ${randomSession.lecture[Math.floor(Math.random() * randomSession.lecture.length)]}`;
-      }
-
       posts.push({
         author,
-        content: `${sentence} — ${header}`,
+        content: this.#randomSentence(practicalPrefixes, lecturePrefixes),
       });
     }
 
     return posts;
+  }
+
+  // same idea as getPosts, but worded as a reply to someone else's post
+  getComments(author, commentCount = 1) {
+    if (this.#curriculum === null) {
+      throw new Error("Curriculum not loaded. Call load() first.");
+    }
+
+    const practicalPrefixes = [
+      "Same here on",
+      "Good luck with",
+      "Let me know how you get on with",
+      "Still stuck on",
+      "Just finished",
+      "Happy to pair up on",
+      "The tricky part of",
+    ];
+
+    const lecturePrefixes = [
+      "Great notes on",
+      "Still revising",
+      "Any good resources for",
+      "This finally clicked for me on",
+      "Same, I am rewatching",
+      "Bookmarking this for",
+      "Really struggled with",
+    ];
+
+    const comments = [];
+    for (let i = 0; i < commentCount; i++) {
+      comments.push({
+        author,
+        content: this.#randomSentence(practicalPrefixes, lecturePrefixes),
+      });
+    }
+
+    return comments;
   }
 }
 

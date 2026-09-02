@@ -70,7 +70,7 @@ const login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -91,7 +91,7 @@ const login = async (req, res) => {
 const getAllUsers = async (req, res) => {
   // #swagger.summary = 'List all users (passwords excluded)'
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find();
     res.json(users);
   } catch (error) {
     console.error("Error fetching users", error);
@@ -103,7 +103,7 @@ const getUserById = async (req, res) => {
   // #swagger.summary = 'Get a user by ID (password excluded)'
   // #swagger.responses[404] = { description: 'User not found' }
   try {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -140,7 +140,7 @@ const updateUser = async (req, res) => {
       req.params.id,
       { name, email, biography },
       { new: true, runValidators: true },
-    ).select("-password");
+    );
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }

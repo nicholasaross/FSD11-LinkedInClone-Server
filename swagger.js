@@ -3,8 +3,8 @@ import swaggerAutogen from "swagger-autogen";
 
 const doc = {
   info: {
-    title: "Social Media App API",
-    version: "1.0.0",
+    title: "Social Media App API v2",
+    version: "2.0.0",
     description:
       "Most endpoints require a Bearer JWT (obtained from POST /users/login). Admin-only endpoints return 403 for non-admin tokens.",
   },

@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Social Media App API",
-    "version": "1.0.0",
+    "title": "Social Media App API v2",
+    "version": "2.0.0",
     "description": "Most endpoints require a Bearer JWT (obtained from POST /users/login). Admin-only endpoints return 403 for non-admin tokens."
   },
   "servers": [
@@ -25,11 +25,11 @@
     },
     "/restore": {
       "get": {
-        "summary": "Admin-only creation of posts for all non-admin users",
-        "description": "Requires a Bearer token belonging to an administrator.",
+        "summary": "Admin-only reseed of posts and comments for all non-admin users",
+        "description": "Requires a Bearer token belonging to an administrator. Wipes every post and comment, then creates 5 posts per non-admin user and 0-3 comments on each.",
         "responses": {
           "200": {
-            "description": "Successfully restored database with posts for all non-admin users"
+            "description": "Successfully restored database with posts and comments"
           },
           "401": {
             "description": "Invalid or missing API token"
@@ -53,9 +53,6 @@
           },
           "401": {
             "description": "Invalid or missing token"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
@@ -68,9 +65,6 @@
           },
           "400": {
             "description": "Content is required"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -177,6 +171,191 @@
           },
           "404": {
             "description": "Post not found or not owned by user"
+          }
+        }
+      }
+    },
+    "/posts/{postId}/comments/": {
+      "get": {
+        "summary": "Get all comments on a post (oldest first), author populated",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of comments"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "Post not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to a post as the authenticated user",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Comment created"
+          },
+          "400": {
+            "description": "Comment content is required"
+          },
+          "404": {
+            "description": "Post not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "example": "Great write-up, the populate() bit finally clicked."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "get": {
+        "summary": "Get a single comment on a post, author populated",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested comment"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a comment's content (comment author only)",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment updated"
+          },
+          "404": {
+            "description": "Comment not found or not owned by user"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "example": "Edited: the populate() bit finally clicked."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a comment (comment author, or admin)",
+        "description": "",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment deleted"
+          },
+          "403": {
+            "description": "Not allowed to delete this comment"
+          },
+          "404": {
+            "description": "Comment not found"
           }
         }
       }

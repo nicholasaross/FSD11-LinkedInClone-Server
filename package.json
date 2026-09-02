@@ -9,8 +9,8 @@
     "nodemon": "^3.1.14",
     "swagger-ui-express": "^5.0.1"
   },
-  "name": "project-socialmedia",
-  "version": "1.0.0",
+  "name": "project-socialmedia-v2",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -21,9 +21,16 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
   "license": "ISC",
   "devDependencies": {
     "swagger-autogen": "^2.23.7"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicholasaross/FSD11-SocialMediaApp-v2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nicholasaross/FSD11-SocialMediaApp-v2/issues"
+  },
+  "homepage": "https://github.com/nicholasaross/FSD11-SocialMediaApp-v2#readme"
 }

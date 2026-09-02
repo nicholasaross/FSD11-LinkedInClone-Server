@@ -1,4 +1,6 @@
 import Post from "../models/post.model.js";
+import Comment from "../models/comment.model.js";
+import { fail } from "../utils/response.utils.js";
 
 const authorFields = "name email biography";
 
@@ -17,11 +19,7 @@ const getPosts = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching posts:", error);
-    res.status(500).json({
-      status: "error",
-      timestamp: new Date().toLocaleString(),
-      message: "Failed to fetch posts",
-    });
+    fail(res, 500, "Failed to fetch posts");
   }
 };
 
@@ -35,11 +33,7 @@ const getPost = async (req, res) => {
       authorFields,
     );
     if (!post) {
-      return res.status(404).json({
-        status: "error",
-        timestamp: new Date().toLocaleString(),
-        message: "Post not found",
-      });
+      return fail(res, 404, "Post not found");
     }
     res.json({
       status: "success",
@@ -48,11 +42,7 @@ const getPost = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching post:", error);
-    res.status(404).json({
-      status: "error",
-      timestamp: new Date().toLocaleString(),
-      message: "Post not found",
-    });
+    fail(res, 500, "Failed to fetch post");
   }
 };
 
@@ -85,11 +75,7 @@ const createPost = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating post:", error);
-    res.status(500).json({
-      status: "error",
-      timestamp: new Date().toLocaleString(),
-      message: "Failed to create post",
-    });
+    fail(res, 500, "Failed to create post");
   }
 };
 
@@ -113,7 +99,7 @@ const updatePost = async (req, res) => {
   // #swagger.responses[404] = { description: 'Post not found or not owned by user' }
   try {
     const { content } = req.body;
-    // Only the author may edit their post.
+    // only the author can edit their post
     const post = await Post.findOneAndUpdate(
       { _id: req.params.id, author: req.user._id },
       { $set: { content } },
@@ -121,11 +107,7 @@ const updatePost = async (req, res) => {
     ).populate("author", authorFields);
 
     if (!post) {
-      return res.status(404).json({
-        status: "error",
-        timestamp: new Date().toLocaleString(),
-        message: "Post not found",
-      });
+      return fail(res, 404, "Post not found");
     }
 
     res.json({
@@ -135,11 +117,7 @@ const updatePost = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating post:", error);
-    res.status(404).json({
-      status: "error",
-      timestamp: new Date().toLocaleString(),
-      message: "Post not found",
-    });
+    fail(res, 404, "Post not found");
   }
 };
 
@@ -148,19 +126,18 @@ const deletePost = async (req, res) => {
   // #swagger.responses[200] = { description: 'Post deleted' }
   // #swagger.responses[404] = { description: 'Post not found or not owned by user' }
   try {
-    // Only the author may delete their post.
+    // only the author can delete their post
     const result = await Post.deleteOne({
       _id: req.params.id,
       author: req.user._id,
     });
 
     if (result.deletedCount === 0) {
-      return res.status(404).json({
-        status: "error",
-        timestamp: new Date().toLocaleString(),
-        message: "Post not found",
-      });
+      return fail(res, 404, "Post not found");
     }
+
+    // The post is gone; remove its comments so they aren't orphaned.
+    await Comment.deleteMany({ post: req.params.id });
 
     res.json({
       status: "success",
@@ -169,11 +146,7 @@ const deletePost = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting post:", error);
-    res.status(404).json({
-      status: "error",
-      timestamp: new Date().toLocaleString(),
-      message: "Post not found",
-    });
+    fail(res, 404, "Post not found");
   }
 };
 
