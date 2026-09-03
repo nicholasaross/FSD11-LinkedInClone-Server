@@ -8,12 +8,26 @@ const userSchema = new mongoose.Schema(
       maxlength: 100,
       required: true,
     },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 30,
+    },
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
+    },
+    imageUrl: {
+      type: String,
+      trim: true,
+      match: [/^https?:\/\/\S+$/i, "imageUrl must be an http(s) URL"],
     },
     password: {
       type: String,

@@ -27,12 +27,14 @@ const signup = async (req, res) => {
           "application/json": {
             schema: {
               type: "object",
-              required: ["name", "email", "password"],
+              required: ["name", "username", "email", "password"],
               properties: {
                 name: { type: "string", example: "Nick Ross" },
+                username: { type: "string", example: "nickross" },
                 email: { type: "string", example: "nick@example.com" },
                 password: { type: "string", example: "s3cr3tpw" },
-                biography: { type: "string", example: "FSD student" }
+                biography: { type: "string", example: "FSD student" },
+                imageUrl: { type: "string", example: "https://example.com/avatar.png" }
               }
             }
           }
@@ -40,19 +42,22 @@ const signup = async (req, res) => {
       } */
   // #swagger.responses[201] = { description: 'User created; returns { token, user }' }
   // #swagger.responses[400] = { description: 'Missing required fields or invalid values' }
-  // #swagger.responses[409] = { description: 'Email already registered' }
+  // #swagger.responses[409] = { description: 'Email or username already registered' }
   try {
-    const { name, email, password, biography } = req.body;
-    if (!name || !email || !password) {
+    const { name, username, email, password, biography, imageUrl } = req.body;
+    if (!name || !username || !email || !password) {
       return fail(res, 400, "Missing required fields");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       name,
+      username,
       email,
       password: hashedPassword,
       biography,
+      // || undefined so an empty string means "no picture" instead of failing the URL validator
+      imageUrl: imageUrl || undefined,
     });
 
     // return a token so the client doesn't have to immediately POST to /login
@@ -60,9 +65,10 @@ const signup = async (req, res) => {
     succeed(res, { token: tokenFor(user), user }, 201);
   } catch (error) {
     console.error("Error creating user", error);
-    // 11000 is Mongo's duplicate-key code, here it can only be the unique email
+    // 11000 is Mongo's duplicate-key code; here it's the unique email or username
     if (error.code === 11000) {
-      return fail(res, 409, "Email already registered");
+      const field = Object.keys(error.keyPattern || {})[0] || "email";
+      return fail(res, 409, `${field} already registered`);
     }
     failFromError(res, error, 500, "Failed to create user");
   }
@@ -153,8 +159,10 @@ const updateUser = async (req, res) => {
               type: "object",
               properties: {
                 name: { type: "string", example: "Nick Ross" },
+                username: { type: "string", example: "nickross" },
                 email: { type: "string", example: "nick@example.com" },
-                biography: { type: "string", example: "Updated bio" }
+                biography: { type: "string", example: "Updated bio" },
+                imageUrl: { type: "string", example: "https://example.com/avatar.png", description: "Send null or an empty string to remove the picture." }
               }
             }
           }
@@ -164,17 +172,25 @@ const updateUser = async (req, res) => {
   // #swagger.responses[403] = { description: 'Not your account' }
   // #swagger.responses[404] = { description: 'User not found' }
   try {
-    const { name, email, biography } = req.body;
+    const { name, username, email, biography, imageUrl } = req.body;
 
     // partial update: only touch what the body mentions
     const set = {};
     if (name !== undefined) set.name = name;
+    if (username !== undefined) set.username = username;
     if (email !== undefined) set.email = email;
     if (biography !== undefined) set.biography = biography;
 
+    const update = { $set: set };
+    // a null or empty imageUrl means remove the picture, which is $unset not $set
+    if (imageUrl !== undefined) {
+      if (imageUrl) set.imageUrl = imageUrl;
+      else update.$unset = { imageUrl: "" };
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { $set: set },
+      update,
       { returnDocument: "after", runValidators: true },
     );
     if (!user) {

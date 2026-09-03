@@ -510,7 +510,7 @@
             "description": "Missing required fields or invalid values"
           },
           "409": {
-            "description": "Email already registered"
+            "description": "Email or username already registered"
           }
         },
         "security": [],
@@ -522,6 +522,7 @@
                 "type": "object",
                 "required": [
                   "name",
+                  "username",
                   "email",
                   "password"
                 ],
@@ -529,6 +530,10 @@
                   "name": {
                     "type": "string",
                     "example": "Nick Ross"
+                  },
+                  "username": {
+                    "type": "string",
+                    "example": "nickross"
                   },
                   "email": {
                     "type": "string",
@@ -541,6 +546,10 @@
                   "biography": {
                     "type": "string",
                     "example": "FSD student"
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "example": "https://example.com/avatar.png"
                   }
                 }
               }
@@ -668,6 +677,10 @@
                     "type": "string",
                     "example": "Nick Ross"
                   },
+                  "username": {
+                    "type": "string",
+                    "example": "nickross"
+                  },
                   "email": {
                     "type": "string",
                     "example": "nick@example.com"
@@ -675,6 +688,11 @@
                   "biography": {
                     "type": "string",
                     "example": "Updated bio"
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "example": "https://example.com/avatar.png",
+                    "description": "Send null or an empty string to remove the picture."
                   }
                 }
               }
