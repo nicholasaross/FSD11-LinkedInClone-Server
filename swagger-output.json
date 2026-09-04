@@ -26,7 +26,7 @@
     "/restore": {
       "get": {
         "summary": "Admin-only reseed of posts and comments for all non-admin users",
-        "description": "Requires a Bearer token belonging to an administrator. Wipes every post and comment, then creates 5 posts per non-admin user and 0-3 comments on each.",
+        "description": "Requires a Bearer token belonging to an administrator. Wipes every post and comment, then creates 5 posts per non-admin user and 0-3 comments on each, backdated to random times over the last 60 days.",
         "responses": {
           "200": {
             "description": "Successfully restored database with posts and comments"
