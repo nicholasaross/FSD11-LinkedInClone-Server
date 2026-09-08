@@ -1,4 +1,4 @@
-import curriculum from "../models/curriculum.js";
+import linkedin_ghastliness from "../models/linkedin.ghastliness.js";
 import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import Comment from "../models/comment.model.js";
@@ -48,7 +48,7 @@ const restoreDB = async (req, res) => {
 
     const posts = [];
     for (const user of users) {
-      posts.push(...curriculum.getPosts(user._id, 5));
+      posts.push(...linkedin_ghastliness.getPosts(user._id, 5));
     }
 
     // give roughly half the seeded posts a picsum.photos placeholder
@@ -75,10 +75,10 @@ const restoreDB = async (req, res) => {
     // built from the created posts, only those carry the _id a comment points at
     const comments = [];
     for (const post of createdPosts) {
-      const commentCount = randomInt(4); // 0-3 per post
+      const commentCount = randomInt(5); // 0-4 per post
       for (let i = 0; i < commentCount; i++) {
         const commenter = users[randomInt(users.length)];
-        const [comment] = curriculum.getComments(commenter._id, 1);
+        const [comment] = linkedin_ghastliness.getComments(commenter._id, 1);
         // a reply lands somewhere between its post going up and now
         const createdAt = randomDateBetween(post.createdAt, now);
         comments.push({
