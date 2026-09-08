@@ -16,7 +16,7 @@ const swaggerFile = require("./swagger-output.json");
 
 const port = process.env.PORT || 3000;
 
-const mongoUri = `mongodb+srv://nicholasross_db_user:${process.env.DB_PASSWORD}@cluster0.ed0xajm.mongodb.net/social-media-app-v2?retryWrites=true&w=majority&appName=social-media-app-v2`;
+const mongoUri = `mongodb+srv://nicholasross_db_user:${process.env.DB_PASSWORD}@cluster0.ed0xajm.mongodb.net/linkedinclone-server?retryWrites=true&w=majority&appName=linkedinclone-server`;
 
 const app = express();
 app.disable("x-powered-by");

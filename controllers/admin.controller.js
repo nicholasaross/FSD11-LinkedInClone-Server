@@ -11,7 +11,7 @@ const defaultRoute = (req, res) => {
   // #swagger.security = []
 
   res.json({
-    message: "Welcome to the Social Media App API",
+    message: "Welcome to the LinkedInClone Server",
     timestamp: new Date().toLocaleString(),
   });
 };
@@ -81,11 +81,18 @@ const restoreDB = async (req, res) => {
         const [comment] = curriculum.getComments(commenter._id, 1);
         // a reply lands somewhere between its post going up and now
         const createdAt = randomDateBetween(post.createdAt, now);
-        comments.push({ ...comment, post: post._id, createdAt, updatedAt: createdAt });
+        comments.push({
+          ...comment,
+          post: post._id,
+          createdAt,
+          updatedAt: createdAt,
+        });
       }
     }
     comments.sort((a, b) => a.createdAt - b.createdAt);
-    const createdComments = await Comment.insertMany(comments, { timestamps: false });
+    const createdComments = await Comment.insertMany(comments, {
+      timestamps: false,
+    });
 
     // random likers per doc, one bulkWrite per collection rather than a save() each
     const likeOps = (docs) =>
@@ -93,7 +100,9 @@ const restoreDB = async (req, res) => {
         updateOne: {
           filter: { _id: doc._id },
           update: {
-            $set: { likes: users.filter(() => Math.random() < 0.4).map((u) => u._id) },
+            $set: {
+              likes: users.filter(() => Math.random() < 0.4).map((u) => u._id),
+            },
           },
         },
       }));

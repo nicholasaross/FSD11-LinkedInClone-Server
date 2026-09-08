@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Social Media App API v2",
-    "version": "2.0.0",
+    "title": "LinkedInClone Server",
+    "version": "1.0.0",
     "description": "Most endpoints require a Bearer JWT (obtained from POST /users/login). Admin-only endpoints return 403 for non-admin tokens."
   },
   "servers": [

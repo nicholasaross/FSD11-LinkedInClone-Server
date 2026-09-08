@@ -10,7 +10,7 @@
     "nodemon": "^3.1.14",
     "swagger-ui-express": "^5.0.1"
   },
-  "name": "project-socialmedia-v2",
+  "name": "project-linkedinclone-server",
   "version": "2.0.0",
   "description": "",
   "main": "index.js",
@@ -28,10 +28,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nicholasaross/FSD11-SocialMediaApp-v2.git"
+    "url": "git+https://github.com/nicholasaross/FSD11-LinkedInClone-Server.git"
   },
   "bugs": {
-    "url": "https://github.com/nicholasaross/FSD11-SocialMediaApp-v2/issues"
+    "url": "https://github.com/nicholasaross/FSD11-LinkedInClone-Server/issues"
   },
-  "homepage": "https://github.com/nicholasaross/FSD11-SocialMediaApp-v2#readme"
+  "homepage": "https://github.com/nicholasaross/FSD11-LinkedInClone-Server#readme",
+  "allowScripts": {
+    "bcrypt@6.0.0": true
+  }
 }
