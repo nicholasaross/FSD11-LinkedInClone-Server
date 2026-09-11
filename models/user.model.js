@@ -27,7 +27,6 @@ const userSchema = new mongoose.Schema(
     imageUrl: {
       type: String,
       trim: true,
-      match: [/^https?:\/\/\S+$/i, "imageUrl must be an http(s) URL"],
     },
     password: {
       type: String,

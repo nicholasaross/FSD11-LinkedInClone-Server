@@ -1,7 +1,10 @@
+import bcrypt from "bcrypt";
 import linkedin_ghastliness from "../models/linkedin.ghastliness.js";
+import microsoft_people from "../models/microsoft.people.js";
 import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import Comment from "../models/comment.model.js";
+import Connection from "../models/connection.model.js";
 import { fail } from "../utils/response.utils.js";
 
 const defaultRoute = (req, res) => {
@@ -34,17 +37,41 @@ const randomPastDate = (days) => {
 const randomDateBetween = (start, end) =>
   new Date(start.getTime() + randomInt(end.getTime() - start.getTime() + 1));
 
+// these accounts exist only so the front-end has something to log in as
+const SEED_PASSWORD = "testing";
+
 const restoreDB = async (req, res) => {
-  // #swagger.summary = 'Admin-only reseed of posts and comments for all non-admin users'
-  // #swagger.description = 'Requires a Bearer token belonging to an administrator. Wipes every post and comment, then creates 5 posts per non-admin user and 0-3 comments on each, backdated to random times over the last 60 days.'
-  // #swagger.responses[200] = { description: 'Successfully restored database with posts and comments' }
+  // #swagger.summary = 'Admin-only reseed of the non-admin users, posts, comments and connections'
+  // #swagger.description = 'Requires a Bearer token belonging to an administrator. Wipes every post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password "testing"), with 5 posts each, 0-4 comments on every post, and a randomised network of accepted and pending connections, all backdated to random times over the last 60 days. Administrators are left untouched.'
+  // #swagger.responses[200] = { description: 'Successfully restored database with users, posts, comments and connections' }
   // #swagger.responses[401] = { description: 'Invalid or missing API token' }
   // #swagger.responses[403] = { description: 'Admin privileges required' }
   // #swagger.responses[500] = { description: 'Failed to restore database' }
 
   try {
     const now = new Date();
-    const users = await User.find({ isAdmin: false });
+
+    // read the seed images before deleting anything: there is no point wiping a
+    // database we then can't repopulate
+    const people = microsoft_people.getPeople();
+    if (!people.length) {
+      return fail(res, 500, "No seed images found in models/microsoft");
+    }
+
+    // wipe comments too: this bulk deleteMany bypasses the cascade in deletePost()
+    await Comment.deleteMany({});
+    await Post.deleteMany({});
+    await Connection.deleteMany({});
+    // no need for deleteUser()'s $pull pass over likes arrays: every post and
+    // comment that could have held a reference has just gone
+    await User.deleteMany({ isAdmin: false });
+
+    // hashed once and shared: 10 rounds costs ~100ms a call, and these are
+    // throwaway accounts that all share the one password anyway
+    const password = await bcrypt.hash(SEED_PASSWORD, 10);
+    const users = await User.insertMany(
+      people.map((person) => ({ ...person, password })),
+    );
 
     const posts = [];
     for (const user of users) {
@@ -66,9 +93,6 @@ const restoreDB = async (req, res) => {
     }
     posts.sort((a, b) => a.createdAt - b.createdAt);
 
-    // wipe comments too: this bulk deleteMany bypasses the cascade in deletePost()
-    await Comment.deleteMany({});
-    await Post.deleteMany({});
     // timestamps: false so Mongoose keeps the dates above instead of stamping now
     const createdPosts = await Post.insertMany(posts, { timestamps: false });
 
@@ -113,10 +137,50 @@ const restoreDB = async (req, res) => {
     if (createdComments.length)
       await Comment.bulkWrite(likeOps(createdComments), { timestamps: false });
 
+    // give the seeded users a network: walk every unordered pair once and roll
+    // for an accepted connection, a request still waiting, or nothing at all
+    const connections = [];
+    for (let i = 0; i < users.length; i++) {
+      for (let j = i + 1; j < users.length; j++) {
+        const roll = Math.random();
+        if (roll >= 0.6) continue;
+
+        // either of the pair could have been the one who asked
+        const [requester, recipient] =
+          Math.random() < 0.5 ? [users[i], users[j]] : [users[j], users[i]];
+        const accepted = roll < 0.45;
+        const createdAt = randomPastDate(POST_WINDOW_DAYS);
+
+        connections.push({
+          requester: requester._id,
+          recipient: recipient._id,
+          status: accepted ? "accepted" : "pending",
+          createdAt,
+          // an acceptance lands after the request, a pending one never moved
+          updatedAt: accepted ? randomDateBetween(createdAt, now) : createdAt,
+        });
+      }
+    }
+    connections.sort((a, b) => a.createdAt - b.createdAt);
+    const createdConnections = await Connection.insertMany(connections, {
+      timestamps: false,
+    });
+
+    // insertMany hands back the documents it was given, hash included; select:
+    // false only hides the field on a query
+    for (const user of users) {
+      user.password = undefined;
+    }
+
     res.json({
       status: "success",
       timestamp: new Date().toLocaleString(),
-      data: { posts: createdPosts, comments: createdComments },
+      data: {
+        users,
+        posts: createdPosts,
+        comments: createdComments,
+        connections: createdConnections,
+      },
     });
   } catch (error) {
     console.error("Error restoring database:", error);

@@ -25,11 +25,11 @@
     },
     "/restore": {
       "get": {
-        "summary": "Admin-only reseed of posts and comments for all non-admin users",
-        "description": "Requires a Bearer token belonging to an administrator. Wipes every post and comment, then creates 5 posts per non-admin user and 0-3 comments on each, backdated to random times over the last 60 days.",
+        "summary": "Admin-only reseed of the non-admin users, posts, comments and connections",
+        "description": "Requires a Bearer token belonging to an administrator. Wipes every post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password \"testing\"), with 5 posts each, 0-4 comments on every post, and a randomised network of accepted and pending connections, all backdated to random times over the last 60 days. Administrators are left untouched.",
         "responses": {
           "200": {
-            "description": "Successfully restored database with posts and comments"
+            "description": "Successfully restored database with users, posts, comments and connections"
           },
           "401": {
             "description": "Invalid or missing API token"
@@ -599,7 +599,7 @@
     },
     "/users/": {
       "get": {
-        "summary": "List all users (passwords excluded)",
+        "summary": "List all users (passwords excluded), decorated with your connection state",
         "description": "",
         "responses": {
           "default": {
@@ -624,7 +624,7 @@
     },
     "/users/{id}": {
       "get": {
-        "summary": "Get a user by ID (password excluded)",
+        "summary": "Get a user by ID (password excluded), decorated with your connection state",
         "description": "",
         "parameters": [
           {
@@ -701,7 +701,7 @@
         }
       },
       "delete": {
-        "summary": "Delete a user, along with their posts, comments and likes",
+        "summary": "Delete a user, along with their posts, comments, likes and connections",
         "description": "",
         "parameters": [
           {
@@ -750,6 +750,158 @@
           },
           "403": {
             "description": "Access denied"
+          }
+        }
+      }
+    },
+    "/connections/": {
+      "get": {
+        "summary": "Get the authenticated user's connections and pending requests (newest first)",
+        "description": "Returns every connection the authenticated user is part of, both ends populated. Narrow it with ?status=pending|accepted and ?direction=incoming|outgoing, where incoming means requests sent to you and outgoing means requests you sent.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of connections"
+          },
+          "400": {
+            "description": "Invalid status or direction"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          }
+        }
+      },
+      "post": {
+        "summary": "Request a connection with another user",
+        "description": "",
+        "responses": {
+          "201": {
+            "description": "Connection request created"
+          },
+          "400": {
+            "description": "Recipient missing, not a valid id, or the requester themselves"
+          },
+          "404": {
+            "description": "Recipient not found"
+          },
+          "409": {
+            "description": "Already connected, or a request is already pending"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "recipient"
+                ],
+                "properties": {
+                  "recipient": {
+                    "type": "string",
+                    "example": "6aa42b6454c881523762f1ea",
+                    "description": "Id of the user you want to connect with."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/{id}/accept": {
+      "post": {
+        "summary": "Accept a pending connection request (recipient only)",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; returns the updated connection"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "No pending request with that id addressed to you"
+          }
+        }
+      }
+    },
+    "/connections/{id}/reject": {
+      "post": {
+        "summary": "Reject a pending connection request (recipient only)",
+        "description": "Deletes the request rather than marking it rejected, so the other user is free to ask again later.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request rejected"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "No pending request with that id addressed to you"
+          }
+        }
+      }
+    },
+    "/connections/{id}": {
+      "delete": {
+        "summary": "Withdraw a request you sent, or disconnect from a user",
+        "description": "Works on a pending request or an accepted connection, and either party may do it.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connection removed"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "Connection not found, or you are not part of it"
           }
         }
       }

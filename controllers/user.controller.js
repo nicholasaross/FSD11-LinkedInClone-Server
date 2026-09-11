@@ -3,7 +3,9 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import Comment from "../models/comment.model.js";
+import Connection from "../models/connection.model.js";
 import { fail, failFromError } from "../utils/response.utils.js";
+import { withConnectionState } from "../utils/connection.utils.js";
 
 // tokens last a week by default, override with JWT_EXPIRES_IN in .env
 const tokenFor = (user) =>
@@ -56,7 +58,7 @@ const signup = async (req, res) => {
       email,
       password: hashedPassword,
       biography,
-      // || undefined so an empty string means "no picture" instead of failing the URL validator
+      // || undefined so an empty string means "no picture" rather than storing ""
       imageUrl: imageUrl || undefined,
     });
 
@@ -124,10 +126,10 @@ const getMe = async (req, res) => {
 };
 
 const getAllUsers = async (req, res) => {
-  // #swagger.summary = 'List all users (passwords excluded)'
+  // #swagger.summary = 'List all users (passwords excluded), decorated with your connection state'
   try {
     const users = await User.find();
-    succeed(res, users);
+    succeed(res, await withConnectionState(users, req.user._id));
   } catch (error) {
     console.error("Error fetching users", error);
     failFromError(res, error, 500, "Failed to fetch users");
@@ -135,14 +137,14 @@ const getAllUsers = async (req, res) => {
 };
 
 const getUserById = async (req, res) => {
-  // #swagger.summary = 'Get a user by ID (password excluded)'
+  // #swagger.summary = 'Get a user by ID (password excluded), decorated with your connection state'
   // #swagger.responses[404] = { description: 'User not found' }
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
       return fail(res, 404, "User not found");
     }
-    succeed(res, user);
+    succeed(res, await withConnectionState(user, req.user._id));
   } catch (error) {
     console.error("Error fetching user", error);
     failFromError(res, error, 404, "User not found");
@@ -204,7 +206,7 @@ const updateUser = async (req, res) => {
 };
 
 const deleteUser = async (req, res) => {
-  // #swagger.summary = 'Delete a user, along with their posts, comments and likes'
+  // #swagger.summary = 'Delete a user, along with their posts, comments, likes and connections'
   // #swagger.responses[200] = { description: 'User deleted' }
   // #swagger.responses[403] = { description: 'Not your account' }
   // #swagger.responses[404] = { description: 'User not found' }
@@ -239,6 +241,12 @@ const deleteUser = async (req, res) => {
           { $pull: { likes: user._id } },
         )
       ).modifiedCount,
+      // a connection with a deleted user on either end is a dead reference
+      connections: (
+        await Connection.deleteMany({
+          $or: [{ requester: user._id }, { recipient: user._id }],
+        })
+      ).deletedCount,
     };
 
     succeed(res, { message: "User deleted successfully", removed });
