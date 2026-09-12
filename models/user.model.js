@@ -40,6 +40,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    // this user's portfolio, drawn from the shared skill catalogue. indexed on
+    // the element so "everyone who can do X" stays a cheap query
+    skills: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Skill",
+        index: true,
+      },
+    ],
     isAdmin: {
       type: Boolean,
       default: false,

@@ -3,16 +3,18 @@ import User from "../models/user.model.js";
 import { fail, failFromError } from "../utils/response.utils.js";
 
 // wider than post.controller.js's authorFields: a person card needs the avatar and handle
-const userFields = "name username email biography imageUrl";
+const userFields = "name username email biography imageUrl skills";
 
 const STATUSES = ["pending", "accepted"];
 const DIRECTIONS = ["incoming", "outgoing"];
 
 // both ends populated, so a client can render either side of the pair; the array
-// form works on a query and on an already-created document alike
+// form works on a query and on an already-created document alike. the portfolios
+// come too, so a profile page can list what everyone in a network can do without
+// asking after each of them one at a time
 const bothEnds = [
-  { path: "requester", select: userFields },
-  { path: "recipient", select: userFields },
+  { path: "requester", select: userFields, populate: { path: "skills" } },
+  { path: "recipient", select: userFields, populate: { path: "skills" } },
 ];
 
 const getConnections = async (req, res) => {
@@ -51,6 +53,56 @@ const getConnections = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching connections:", error);
+    failFromError(res, error, 500, "Failed to fetch connections");
+  }
+};
+
+const getConnectionsForUser = async (req, res) => {
+  // #swagger.summary = "Get another user's accepted connections (newest first)"
+  // #swagger.description = 'Accepted connections only, both ends populated: a pending request is between those two people and nobody else. You may only read this for yourself, or for someone you are already connected with; admins may read anyone.'
+  // #swagger.responses[200] = { description: 'List of accepted connections' }
+  // #swagger.responses[401] = { description: 'Invalid or missing token' }
+  // #swagger.responses[403] = { description: 'Not connected with this user' }
+  // #swagger.responses[404] = { description: 'User not found' }
+  try {
+    const { id } = req.params;
+
+    if (!(await User.exists({ _id: id }))) {
+      return fail(res, 404, "User not found");
+    }
+
+    // the network is only on show to the people in it: yourself, anyone you
+    // have accepted, and admins. this mirrors what the client will display, so
+    // the URL itself is no way round it
+    const mayView =
+      req.user._id.equals(id) ||
+      req.user.isAdmin ||
+      (await Connection.exists({
+        status: "accepted",
+        $or: [
+          { requester: req.user._id, recipient: id },
+          { requester: id, recipient: req.user._id },
+        ],
+      }));
+
+    if (!mayView) {
+      return fail(res, 403, "You are not connected with this user");
+    }
+
+    const connections = await Connection.find({
+      status: "accepted",
+      $or: [{ requester: id }, { recipient: id }],
+    })
+      .sort({ createdAt: -1 })
+      .populate(bothEnds);
+
+    res.json({
+      status: "success",
+      timestamp: new Date().toLocaleString(),
+      data: connections,
+    });
+  } catch (error) {
+    console.error("Error fetching connections for user:", error);
     failFromError(res, error, 500, "Failed to fetch connections");
   }
 };
@@ -212,6 +264,7 @@ const removeConnection = async (req, res) => {
 
 export {
   getConnections,
+  getConnectionsForUser,
   requestConnection,
   acceptConnection,
   rejectConnection,

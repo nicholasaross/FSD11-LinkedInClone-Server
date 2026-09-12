@@ -1,10 +1,12 @@
 import bcrypt from "bcrypt";
 import linkedin_ghastliness from "../models/linkedin.ghastliness.js";
 import microsoft_people from "../models/microsoft.people.js";
+import skill_catalogue from "../models/skill.catalogue.js";
 import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import Comment from "../models/comment.model.js";
 import Connection from "../models/connection.model.js";
+import Skill from "../models/skill.model.js";
 import { fail } from "../utils/response.utils.js";
 
 const defaultRoute = (req, res) => {
@@ -40,9 +42,25 @@ const randomDateBetween = (start, end) =>
 // these accounts exist only so the front-end has something to log in as
 const SEED_PASSWORD = "testing";
 
+// roughly ten skills a head, weighted so a profile reads as a professional with
+// one or two alarming hobbies rather than a uniform random smear
+const SKILL_MIX = { technical: 4, business: 4, extreme: 2 };
+
+// draws `count` entries at random without replacement, leaving `pool` alone
+const drawFrom = (pool, count) => {
+  const remaining = [...pool];
+  const drawn = [];
+
+  for (let i = 0; i < count && remaining.length; i++) {
+    drawn.push(...remaining.splice(randomInt(remaining.length), 1));
+  }
+
+  return drawn;
+};
+
 const restoreDB = async (req, res) => {
-  // #swagger.summary = 'Admin-only reseed of the non-admin users, posts, comments and connections'
-  // #swagger.description = 'Requires a Bearer token belonging to an administrator. Wipes every post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password "testing"), with 5 posts each, 0-4 comments on every post, and a randomised network of accepted and pending connections, all backdated to random times over the last 60 days. Administrators are left untouched.'
+  // #swagger.summary = 'Admin-only reseed of the non-admin users, skills, posts, comments and connections'
+  // #swagger.description = 'Requires a Bearer token belonging to an administrator. Wipes every skill, post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password "testing"), with 5 posts each, 0-4 comments on every post, a randomised network of accepted and pending connections, all backdated to random times over the last 60 days, and the 60-skill catalogue with roughly ten skills allotted to each user. Administrators are left untouched.'
   // #swagger.responses[200] = { description: 'Successfully restored database with users, posts, comments and connections' }
   // #swagger.responses[401] = { description: 'Invalid or missing API token' }
   // #swagger.responses[403] = { description: 'Admin privileges required' }
@@ -58,10 +76,23 @@ const restoreDB = async (req, res) => {
       return fail(res, 500, "No seed images found in models/microsoft");
     }
 
+    const catalogue = skill_catalogue.getSkills();
+    if (!catalogue.length) {
+      return fail(
+        res,
+        500,
+        "No seed skills found in models/skills_catalogue.json",
+      );
+    }
+
     // wipe comments too: this bulk deleteMany bypasses the cascade in deletePost()
     await Comment.deleteMany({});
     await Post.deleteMany({});
     await Connection.deleteMany({});
+    // user-added skills go with the catalogue: every non-admin user who could
+    // have added one is about to be deleted anyway, and a survivor would collide
+    // with the catalogue's unique keys
+    await Skill.deleteMany({});
     // no need for deleteUser()'s $pull pass over likes arrays: every post and
     // comment that could have held a reference has just gone
     await User.deleteMany({ isAdmin: false });
@@ -72,6 +103,42 @@ const restoreDB = async (req, res) => {
     const users = await User.insertMany(
       people.map((person) => ({ ...person, password })),
     );
+
+    // no createdBy: the catalogue is house-supplied, so only an admin can edit it
+    const createdSkills = await Skill.insertMany(catalogue);
+
+    // grouped once, then drawn from per user
+    const skillsByCategory = Object.fromEntries(
+      Object.keys(SKILL_MIX).map((category) => [
+        category,
+        createdSkills.filter((skill) => skill.category === category),
+      ]),
+    );
+
+    const skillOps = users.map((user) => {
+      const drawn = Object.entries(SKILL_MIX).flatMap(([category, count]) =>
+        // the mix is a target, not a quota: a plus or minus one either way keeps
+        // two profiles from looking identically composed
+        drawFrom(skillsByCategory[category], count + randomInt(3) - 1).map(
+          (skill) => skill._id,
+        ),
+      );
+
+      // insertMany handed back documents, not a live view of the collection;
+      // setting this keeps them in step with the write below, so the response
+      // shows each user's portfolio
+      user.skills = drawn;
+
+      return {
+        updateOne: {
+          filter: { _id: user._id },
+          update: { $set: { skills: drawn } },
+        },
+      };
+    });
+
+    // timestamps: false so the accounts keep the createdAt they were inserted with
+    await User.bulkWrite(skillOps, { timestamps: false });
 
     const posts = [];
     for (const user of users) {
@@ -177,6 +244,7 @@ const restoreDB = async (req, res) => {
       timestamp: new Date().toLocaleString(),
       data: {
         users,
+        skills: createdSkills,
         posts: createdPosts,
         comments: createdComments,
         connections: createdConnections,

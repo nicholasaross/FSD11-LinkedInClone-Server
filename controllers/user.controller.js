@@ -4,6 +4,7 @@ import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import Comment from "../models/comment.model.js";
 import Connection from "../models/connection.model.js";
+import Skill from "../models/skill.model.js";
 import { fail, failFromError } from "../utils/response.utils.js";
 import { withConnectionState } from "../utils/connection.utils.js";
 
@@ -110,7 +111,9 @@ const login = async (req, res) => {
     }
 
     user.password = undefined;
-    succeed(res, { token: tokenFor(user), user });
+    // the client seeds its profile state from this response, so send the
+    // portfolio as objects rather than bare ids
+    succeed(res, { token: tokenFor(user), user: await user.populate("skills") });
   } catch (error) {
     console.error("Error logging in", error);
     failFromError(res, error, 500, "Failed to log in");
@@ -121,15 +124,16 @@ const getMe = async (req, res) => {
   // #swagger.summary = 'Get the authenticated user from their token'
   // #swagger.responses[200] = { description: 'The current user' }
   // #swagger.responses[401] = { description: 'Invalid or missing token' }
-  // authenticate already loaded the user, nothing left to fetch
-  succeed(res, req.user);
+  // authenticate already loaded the user; only the portfolio is left to fill in
+  succeed(res, await req.user.populate("skills"));
 };
 
 const getAllUsers = async (req, res) => {
   // #swagger.summary = 'List all users (passwords excluded), decorated with your connection state'
+  // #swagger.description = 'Each user arrives with their skill portfolio populated.'
   try {
-    const users = await User.find();
-    succeed(res, await withConnectionState(users, req.user._id));
+    const users = await User.find().populate("skills");
+    succeed(res, await withConnectionState(users, req.user));
   } catch (error) {
     console.error("Error fetching users", error);
     failFromError(res, error, 500, "Failed to fetch users");
@@ -140,11 +144,11 @@ const getUserById = async (req, res) => {
   // #swagger.summary = 'Get a user by ID (password excluded), decorated with your connection state'
   // #swagger.responses[404] = { description: 'User not found' }
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).populate("skills");
     if (!user) {
       return fail(res, 404, "User not found");
     }
-    succeed(res, await withConnectionState(user, req.user._id));
+    succeed(res, await withConnectionState(user, req.user));
   } catch (error) {
     console.error("Error fetching user", error);
     failFromError(res, error, 404, "User not found");
@@ -207,6 +211,7 @@ const updateUser = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   // #swagger.summary = 'Delete a user, along with their posts, comments, likes and connections'
+  // #swagger.description = 'Skills they added to the catalogue survive them, since other users may hold them; they simply lose their creator, leaving only an admin able to edit them.'
   // #swagger.responses[200] = { description: 'User deleted' }
   // #swagger.responses[403] = { description: 'Not your account' }
   // #swagger.responses[404] = { description: 'User not found' }
@@ -247,6 +252,15 @@ const deleteUser = async (req, res) => {
           $or: [{ requester: user._id }, { recipient: user._id }],
         })
       ).deletedCount,
+      // skills they invented stay in the shared catalogue - other people may
+      // hold them - they just lose an author who no longer exists. the skills
+      // they held left with the user document
+      skillsOrphaned: (
+        await Skill.updateMany(
+          { createdBy: user._id },
+          { $unset: { createdBy: "" } },
+        )
+      ).modifiedCount,
     };
 
     succeed(res, { message: "User deleted successfully", removed });

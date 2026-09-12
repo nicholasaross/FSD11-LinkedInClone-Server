@@ -25,8 +25,8 @@
     },
     "/restore": {
       "get": {
-        "summary": "Admin-only reseed of the non-admin users, posts, comments and connections",
-        "description": "Requires a Bearer token belonging to an administrator. Wipes every post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password \"testing\"), with 5 posts each, 0-4 comments on every post, and a randomised network of accepted and pending connections, all backdated to random times over the last 60 days. Administrators are left untouched.",
+        "summary": "Admin-only reseed of the non-admin users, skills, posts, comments and connections",
+        "description": "Requires a Bearer token belonging to an administrator. Wipes every skill, post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password \"testing\"), with 5 posts each, 0-4 comments on every post, a randomised network of accepted and pending connections, all backdated to random times over the last 60 days, and the 60-skill catalogue with roughly ten skills allotted to each user. Administrators are left untouched.",
         "responses": {
           "200": {
             "description": "Successfully restored database with users, posts, comments and connections"
@@ -600,7 +600,7 @@
     "/users/": {
       "get": {
         "summary": "List all users (passwords excluded), decorated with your connection state",
-        "description": "",
+        "description": "Each user arrives with their skill portfolio populated.",
         "responses": {
           "default": {
             "description": ""
@@ -702,7 +702,7 @@
       },
       "delete": {
         "summary": "Delete a user, along with their posts, comments, likes and connections",
-        "description": "",
+        "description": "Skills they added to the catalogue survive them, since other users may hold them; they simply lose their creator, leaving only an admin able to edit them.",
         "parameters": [
           {
             "name": "id",
@@ -716,6 +716,154 @@
         "responses": {
           "200": {
             "description": "User deleted"
+          },
+          "403": {
+            "description": "Not your account"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/users/{id}/connections": {
+      "get": {
+        "summary": "Get another user's accepted connections (newest first)",
+        "description": "Accepted connections only, both ends populated: a pending request is between those two people and nobody else. You may only read this for yourself, or for someone you are already connected with; admins may read anyone.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of accepted connections"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "403": {
+            "description": "Not connected with this user"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/users/{id}/skills": {
+      "get": {
+        "summary": "Get a user's skill portfolio",
+        "description": "Readable by any authenticated user, like the profile itself.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of skills"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a skill to a portfolio (your own, or anyone if you are an admin)",
+        "description": "Send { skill } with the id of a catalogue skill, or { name, category } to add a brand new skill to the catalogue and the portfolio in one call. Adding a skill twice is a no-op rather than an error. Returns the full portfolio.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill added; returns the portfolio"
+          },
+          "400": {
+            "description": "Neither a valid skill id nor a name and category"
+          },
+          "403": {
+            "description": "Not your account"
+          },
+          "404": {
+            "description": "User or skill not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "skill": {
+                    "type": "string",
+                    "example": "6aa42b6454c881523762f1ea",
+                    "description": "Id of an existing catalogue skill."
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Underwater Basket Weaving",
+                    "description": "Use with category instead of skill, to create and add in one call."
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "technical",
+                      "business",
+                      "extreme"
+                    ],
+                    "example": "extreme"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}/skills/{skillId}": {
+      "delete": {
+        "summary": "Remove a skill from a portfolio (your own, or anyone if you are an admin)",
+        "description": "Only the portfolio entry goes; the skill stays in the shared catalogue. Removing a skill the user does not hold is a no-op rather than an error. Returns the full portfolio.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skillId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill removed; returns the portfolio"
           },
           "403": {
             "description": "Not your account"
@@ -902,6 +1050,209 @@
           },
           "404": {
             "description": "Connection not found, or you are not part of it"
+          }
+        }
+      }
+    },
+    "/skills/": {
+      "get": {
+        "summary": "List the skill catalogue, decorated with how many users hold each skill",
+        "description": "Every skill on the server, both the seeded catalogue and any a user has added. Narrow it with ?category=technical|business|extreme and ?q=<search>, which matches anywhere in the name. Each skill carries userCount and inPortfolio (whether you hold it).",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of skills"
+          },
+          "400": {
+            "description": "Invalid category"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a new skill to the shared catalogue",
+        "description": "Any authenticated user may add a skill. It joins the catalogue for everyone, and only its creator (or an admin) can rename or delete it afterwards. Creating a skill does not add it to your own portfolio: POST /users/{id}/skills does that.",
+        "responses": {
+          "201": {
+            "description": "Skill created"
+          },
+          "400": {
+            "description": "Name missing, or category not one of the three"
+          },
+          "409": {
+            "description": "A skill with that name already exists"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "category"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Underwater Basket Weaving"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "technical",
+                      "business",
+                      "extreme"
+                    ],
+                    "example": "extreme"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/skills/{id}": {
+      "get": {
+        "summary": "Get a single skill by ID",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The skill"
+          },
+          "404": {
+            "description": "Skill not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Rename or recategorise a skill (creator or admin only)",
+        "description": "Other users may already hold this skill, so editing is limited to whoever added it. Seeded catalogue skills have no creator and can only be edited by an admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill updated"
+          },
+          "403": {
+            "description": "Not your skill"
+          },
+          "404": {
+            "description": "Skill not found"
+          },
+          "409": {
+            "description": "Another skill already has that name"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Underwater Basket Weaving"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "technical",
+                      "business",
+                      "extreme"
+                    ],
+                    "example": "extreme"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a skill from the catalogue (creator or admin only)",
+        "description": "Also removes the skill from every portfolio holding it, since there are no foreign keys to do it for us. Returns how many users were affected.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill deleted"
+          },
+          "403": {
+            "description": "Not your skill"
+          },
+          "404": {
+            "description": "Skill not found"
+          }
+        }
+      }
+    },
+    "/skills/{id}/users": {
+      "get": {
+        "summary": "List the users who hold a skill",
+        "description": "Person cards decorated with your connection state, the same shape GET /users returns.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users"
+          },
+          "404": {
+            "description": "Skill not found"
           }
         }
       }

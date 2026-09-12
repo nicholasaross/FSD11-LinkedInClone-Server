@@ -12,9 +12,16 @@ const stateFor = (connection, userId) => ({
         : "pendingIncoming",
 });
 
+// an email address is only on show to the person it belongs to and the people
+// they have accepted. admins are exempt because the client's edit form is
+// seeded from these objects, and a missing field there would blank the address
+const mayReadEmail = (viewer, connectionStatus) =>
+  viewer.isAdmin || connectionStatus === "self" || connectionStatus === "accepted";
+
 // adds the derived connection fields to a user, or to an array of users,
 // as seen by the user doing the asking
-export const withConnectionState = async (userOrUsers, userId) => {
+export const withConnectionState = async (userOrUsers, viewer) => {
+  const userId = viewer._id;
   const users = Array.isArray(userOrUsers) ? userOrUsers : [userOrUsers];
   const ids = users.map((user) => user._id);
 
@@ -54,14 +61,21 @@ export const withConnectionState = async (userOrUsers, userId) => {
   const decorated = users.map((user) => {
     const key = user._id.toString();
 
-    return {
-      ...user.toObject(),
+    const state = {
       connectionCount: countByUser.get(key) ?? 0,
       // the viewer has no connection with themselves to report
       connectionStatus: user._id.equals(userId) ? "self" : "none",
       connectionId: null,
       ...(user._id.equals(userId) ? {} : byUser.get(key)),
     };
+
+    const plain = { ...user.toObject(), ...state };
+
+    if (!mayReadEmail(viewer, state.connectionStatus)) {
+      delete plain.email;
+    }
+
+    return plain;
   });
 
   return Array.isArray(userOrUsers) ? decorated : decorated[0];

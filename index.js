@@ -11,6 +11,7 @@ import postRoutes from "./routes/post.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import connectionRoutes from "./routes/connection.routes.js";
+import skillRoutes from "./routes/skill.routes.js";
 
 const require = createRequire(import.meta.url);
 const swaggerFile = require("./swagger-output.json");
@@ -36,6 +37,7 @@ app.use("/posts", postRoutes);
 app.use("/users", userRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/connections", connectionRoutes);
+app.use("/skills", skillRoutes);
 
 app.use((req, res) =>
   fail(res, 404, `Cannot ${req.method} ${req.originalUrl}`),
