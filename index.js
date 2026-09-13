@@ -4,17 +4,14 @@ import cors from "cors";
 import mongoose from "mongoose";
 import { fail, failFromError } from "./utils/response.utils.js";
 import loggerMiddleware from "./middleware/logger.middleware.js";
-import { createRequire } from "module";
 import swaggerUi from "swagger-ui-express";
+import swaggerFile from "./swagger-output.json" with { type: "json" };
 import adminRoutes from "./routes/admin.routes.js";
 import postRoutes from "./routes/post.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import connectionRoutes from "./routes/connection.routes.js";
 import skillRoutes from "./routes/skill.routes.js";
-
-const require = createRequire(import.meta.url);
-const swaggerFile = require("./swagger-output.json");
 
 const port = process.env.PORT || 3000;
 

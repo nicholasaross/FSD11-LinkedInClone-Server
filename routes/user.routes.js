@@ -14,8 +14,15 @@ import {
   addUserSkill,
   removeUserSkill,
 } from "../controllers/skill.controller.js";
+import {
+  getUserRoles,
+  addUserRole,
+  updateUserRole,
+  removeUserRole,
+} from "../controllers/role.controller.js";
 import authenticate from "../middleware/auth.middleware.js";
 import requireSelfOrAdmin from "../middleware/requireSelfOrAdmin.middleware.js";
+import validateRole from "../middleware/validateRole.middleware.js";
 
 import mongoose from "mongoose";
 import { fail } from "../utils/response.utils.js";
@@ -33,6 +40,13 @@ router.param("skillId", (req, res, next, skillId) =>
   mongoose.Types.ObjectId.isValid(skillId)
     ? next()
     : fail(res, 404, "Skill not found"),
+);
+
+// and the role half of /users/:id/roles/:roleId likewise
+router.param("roleId", (req, res, next, roleId) =>
+  mongoose.Types.ObjectId.isValid(roleId)
+    ? next()
+    : fail(res, 404, "Role not found"),
 );
 
 // public: no token required to register or log in
@@ -60,6 +74,30 @@ router.delete(
   authenticate,
   requireSelfOrAdmin,
   removeUserSkill,
+);
+
+// a work history is public to anyone logged in, like the portfolio above, but
+// only its owner (or an admin) may change it
+router.get("/:id/roles", authenticate, getUserRoles);
+router.post(
+  "/:id/roles",
+  authenticate,
+  requireSelfOrAdmin,
+  validateRole,
+  addUserRole,
+);
+router.put(
+  "/:id/roles/:roleId",
+  authenticate,
+  requireSelfOrAdmin,
+  validateRole,
+  updateUserRole,
+);
+router.delete(
+  "/:id/roles/:roleId",
+  authenticate,
+  requireSelfOrAdmin,
+  removeUserRole,
 );
 
 // a user may only update or delete their own account (admins may do either)

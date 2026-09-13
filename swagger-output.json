@@ -26,7 +26,7 @@
     "/restore": {
       "get": {
         "summary": "Admin-only reseed of the non-admin users, skills, posts, comments and connections",
-        "description": "Requires a Bearer token belonging to an administrator. Wipes every skill, post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password \"testing\"), with 5 posts each, 0-4 comments on every post, a randomised network of accepted and pending connections, all backdated to random times over the last 60 days, and the 60-skill catalogue with roughly ten skills allotted to each user. Administrators are left untouched.",
+        "description": "Requires a Bearer token belonging to an administrator. Wipes every skill, post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password \"testing\"), each holding a current Microsoft board seat that began at a random month between one and fifteen years ago, with 5 posts each, 0-4 comments on every post, a randomised network of accepted and pending connections, all backdated to random times over the last 60 days, and the 60-skill catalogue with roughly ten skills allotted to each user. Administrators are left untouched.",
         "responses": {
           "200": {
             "description": "Successfully restored database with users, posts, comments and connections"
@@ -870,6 +870,207 @@
           },
           "404": {
             "description": "User not found"
+          }
+        }
+      }
+    },
+    "/users/{id}/roles": {
+      "get": {
+        "summary": "Get a user's work history",
+        "description": "Readable by any authenticated user, like the profile itself. Current roles come first, then the most recently begun. A role whose end is null is one the user still holds.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of roles"
+          },
+          "401": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a role to a work history (your own, or anyone if you are an admin)",
+        "description": "Months are \"YYYY-MM\". Leave end out, or send it as null, for a role the user still holds. Returns the whole history, in display order.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Role added; returns the history"
+          },
+          "400": {
+            "description": "Missing fields, a month that is not YYYY-MM, or an end before the start"
+          },
+          "403": {
+            "description": "Not your account"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "company",
+                  "start"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "Board Member"
+                  },
+                  "company": {
+                    "type": "string",
+                    "example": "Microsoft"
+                  },
+                  "companyLogoUrl": {
+                    "type": "string",
+                    "example": "assets/ms-logo.png",
+                    "description": "Served by the client from its own public folder."
+                  },
+                  "start": {
+                    "type": "string",
+                    "example": "2019-03"
+                  },
+                  "end": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": null,
+                    "description": "null or an empty string for a role the user still holds."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}/roles/{roleId}": {
+      "put": {
+        "summary": "Update a role (your own, or anyone if you are an admin)",
+        "description": "A partial update: only the fields the body mentions are touched. Send end as null to reopen a role the user has gone back to, or as a month to close a current one. Returns the whole history, in display order.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role updated; returns the history"
+          },
+          "400": {
+            "description": "A month that is not YYYY-MM, or an end before the start"
+          },
+          "403": {
+            "description": "Not your account"
+          },
+          "404": {
+            "description": "User or role not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "Chairman"
+                  },
+                  "company": {
+                    "type": "string",
+                    "example": "Microsoft"
+                  },
+                  "companyLogoUrl": {
+                    "type": "string",
+                    "example": "assets/ms-logo.png",
+                    "description": "Send an empty string to remove the logo."
+                  },
+                  "start": {
+                    "type": "string",
+                    "example": "2019-03"
+                  },
+                  "end": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "2024-11",
+                    "description": "null or an empty string for a role the user still holds."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a role from a work history (your own, or anyone if you are an admin)",
+        "description": "Unlike a skill, a role exists only inside the user who held it, so removing one that is not there is a 404 rather than a no-op. Returns what is left of the history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role removed; returns the history"
+          },
+          "403": {
+            "description": "Not your account"
+          },
+          "404": {
+            "description": "User or role not found"
           }
         }
       }

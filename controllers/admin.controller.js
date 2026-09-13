@@ -39,6 +39,30 @@ const randomPastDate = (days) => {
 const randomDateBetween = (start, end) =>
   new Date(start.getTime() + randomInt(end.getTime() - start.getTime() + 1));
 
+// the seeded cast are all sitting board members, so each gets one current role.
+// one to fifteen years back: long enough that they do not all read as new
+// appointments, short enough that nobody is on their fortieth year in the seat
+const ROLE_MIN_YEARS = 1;
+const ROLE_MAX_YEARS = 15;
+
+const MICROSOFT_ROLE = {
+  title: "Board Member",
+  company: "Microsoft",
+  // the client serves this from its own public folder, like the headshots
+  companyLogoUrl: "assets/ms-logo.png",
+};
+
+// a random "YYYY-MM" between min and max years ago. counted in whole months
+// rather than by setMonth(), which rolls a 31st into the following month and
+// would quietly shift the answer by one
+const randomStartMonth = (minYears, maxYears) => {
+  const now = new Date();
+  const back = minYears * 12 + randomInt((maxYears - minYears) * 12 + 1);
+  const months = now.getFullYear() * 12 + now.getMonth() - back;
+
+  return `${Math.floor(months / 12)}-${String((months % 12) + 1).padStart(2, "0")}`;
+};
+
 // these accounts exist only so the front-end has something to log in as
 const SEED_PASSWORD = "testing";
 
@@ -60,7 +84,7 @@ const drawFrom = (pool, count) => {
 
 const restoreDB = async (req, res) => {
   // #swagger.summary = 'Admin-only reseed of the non-admin users, skills, posts, comments and connections'
-  // #swagger.description = 'Requires a Bearer token belonging to an administrator. Wipes every skill, post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password "testing"), with 5 posts each, 0-4 comments on every post, a randomised network of accepted and pending connections, all backdated to random times over the last 60 days, and the 60-skill catalogue with roughly ten skills allotted to each user. Administrators are left untouched.'
+  // #swagger.description = 'Requires a Bearer token belonging to an administrator. Wipes every skill, post, comment, connection and non-admin user, then recreates one test user per headshot in models/microsoft (username <forename><surname initial>, email <username>@microsoft.com, password "testing"), each holding a current Microsoft board seat that began at a random month between one and fifteen years ago, with 5 posts each, 0-4 comments on every post, a randomised network of accepted and pending connections, all backdated to random times over the last 60 days, and the 60-skill catalogue with roughly ten skills allotted to each user. Administrators are left untouched.'
   // #swagger.responses[200] = { description: 'Successfully restored database with users, posts, comments and connections' }
   // #swagger.responses[401] = { description: 'Invalid or missing API token' }
   // #swagger.responses[403] = { description: 'Admin privileges required' }
@@ -101,7 +125,19 @@ const restoreDB = async (req, res) => {
     // throwaway accounts that all share the one password anyway
     const password = await bcrypt.hash(SEED_PASSWORD, 10);
     const users = await User.insertMany(
-      people.map((person) => ({ ...person, password })),
+      people.map((person) => ({
+        ...person,
+        password,
+        // one current seat each, embedded so insertMany takes it straight
+        // through, validators and subdocument ids included
+        roles: [
+          {
+            ...MICROSOFT_ROLE,
+            start: randomStartMonth(ROLE_MIN_YEARS, ROLE_MAX_YEARS),
+            end: null,
+          },
+        ],
+      })),
     );
 
     // no createdBy: the catalogue is house-supplied, so only an admin can edit it
